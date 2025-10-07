@@ -3,169 +3,128 @@
 [![npm version](https://img.shields.io/npm/v/@bosh-code/tsdown-plugin-inject-css)](https://npmjs.com/package/@bosh-code/tsdown-plugin-inject-css)
 ![license](https://img.shields.io/npm/l/@bosh-code/tsdown-plugin-inject-css)
 
-Inject CSS imports at the top of each chunk file in tsdown builds.
+Inject CSS imports at the top of files built with [tsdown](https://tsdown.dev/).
 
 During the build process, tsdown strips CSS imports from your source files. This plugin tracks those imports and
-re-injects them into output chunks.
-
-```js
-// Input: foo.ts
-import './foo.css';
-
-export const Foo = () => <div>Foo</div>;
-
-// Output: foo.js (with plugin)
-import './foo.css';
-
-export const Foo = () => <div>Foo</div>;
-```
-
-## Features
-
-- 💡 Automatically tracks CSS imports before they're stripped
-- 🎯 Injects imports into the correct output chunks
-- ⚡️ Sourcemap support
-- 🛠 Out-of-box, minimal configuration
-- 🔄 Works with tsdown's code splitting and chunking
+re-injects them into the built files.
 
 ## Installation
 
-```bash
-npm install @bosh-code/tsdown-plugin-inject-css -D
-# or
-pnpm add @bosh-code/tsdown-plugin-inject-css -D
-# or
-yarn add @bosh-code/tsdown-plugin-inject-css -D
+Install the plugin:
+
+```shell
+# npm
+npm install -D @bosh-code/tsdown-plugin-inject-css
+
+# yarn
+yarn add -D @bosh-code/tsdown-plugin-inject-css
+
+# pnpm
+pnpm add -D @bosh-code/tsdown-plugin-inject-css
 ```
 
-## Usage
+Add it to your `tsdown.config.ts`:
 
 ```ts
 // tsdown.config.ts
-import { defineConfig } from 'tsdown';
-import { libInjectCss } from '@bosh-code/tsdown-plugin-inject-css';
+
+import { injectCssPlugin } from '@bosh-code/tsdown-plugin-inject-css';
 
 export default defineConfig({
-  entry: ['./src/index.ts'],
-  format: ['esm'],
+  external: ['preact'],
   plugins: [
-    libInjectCss({
-      sourcemap: true, // default: true
-    }),
-  ],
+    injectCssPlugin()
+  ]
 });
+
 ```
 
-## How It Works
-
-The plugin operates in three phases:
-
-1. **Transform Phase**: Scans source files for CSS imports (e.g., `import './style.css'`) before they're stripped
-2. **Render Phase**: Tracks which source modules end up in which output chunks
-3. **Generate Phase**: Re-injects the CSS imports at the top of the appropriate chunks
+___
 
 ### Example
 
-Given this structure:
+#### Source files:
+
+Component files:
+
+```css
+/* src/greeting.css */
+
+/* Add component styles here */
+
+.greeting {
+  color: red;
+}
+```
+
+```tsx
+// src/greeting.tsx
+import './Foo.css';
+
+export const Greeting = () => <div class="greeting">Hello World</div>;
+```
+
+Library entrypoint:
+
+```css
+/* src/index.css */
+
+/* Add global styles here */
+
+html {
+  background-color: blue;
+}
+```
 
 ```ts
-// src/foo.ts
-import './foo.css';
-
-export const Foo = () => <div>Foo < /div>;
-
-// src/bar.ts
-import './bar.css';
-
-export const Bar = () => <div>Bar < /div>;
-
 // src/index.ts
-export { Foo } from './foo';
-export { Bar } from './bar';
+import './index.css';
+
+export { Greeting } from './greeting'
 ```
 
-The plugin ensures:
+#### Built files:
 
-- `foo.js` includes `import './foo.css';`
-- `bar.js` includes `import './bar.css';`
-- `index.js` imports from `foo.js` and `bar.js` (CSS already handled)
+```css
+/* dist/index.css */
+html {
+  background-color: blue;
+}
 
-## Options
+.greeting {
+  color: red;
+}
 
-### `sourcemap`
-
-- Type: `boolean`
-- Default: `true`
-
-Whether to generate sourcemaps for the modified chunks.
-
-```ts
-libInjectCss({
-  sourcemap: false, // Disable sourcemap generation
-})
+/* Gorgeous colour theme, I know. */
 ```
 
-## Why This Plugin?
+```js
+// dist/index.js
+import { jsx as e } from 'preact/jsx-runtime';
+import './index.css'; // Injected by plugin
 
-When building component libraries with tsdown, CSS imports are typically stripped during the transpilation process. This
-plugin solves the problem by:
+const t = () => e(`div`, { className: `greeting`, children: `Hello World` });
+export { t as Greeting };
 
-1. **Preserving CSS imports**: Ensures styles are loaded when components are used
-2. **Proper chunking**: Each chunk only imports its required CSS files
-3. **Tree-shaking friendly**: Works seamlessly with tsdown's code splitting
-4. **Zero configuration**: Works out of the box with sensible defaults
-
-## Compatibility
-
-This plugin is designed for:
-
-- ✅ tsdown (primary target)
-- ✅ Rolldown (direct compatibility)
-- ⚠️ Rollup (may work with limitations)
-
-## Configuration Tips
-
-### For Component Libraries
-
-When building a component library, you typically want:
-
-```ts
-export default defineConfig({
-  entry: ['./src/index.ts'],
-  format: ['esm'],
-  dts: true,
-  sourcemap: true,
-  plugins: [
-    libInjectCss(),
-  ],
-});
 ```
 
-### With Multiple Entry Points
+___
 
-The plugin works seamlessly with multiple entries:
+### The how and why
 
-```ts
-export default defineConfig({
-  entry: {
-    index: './src/index.ts',
-    button: './src/button/index.ts',
-    card: './src/card/index.ts',
-  },
-  format: ['esm'],
-  plugins: [
-    libInjectCss(),
-  ],
-});
-```
+This plugin is *heavily* inspired by [vite-plugin-lib-inject-css](https://github.com/emosheeep/vite-plugin-lib-inject-css) but
+I adapted it to work with tsdown specifically.
 
-Each entry point will have its CSS imports properly injected.
+I made this because I wanted to use tsdown to build my preact component library.
 
-## Inspired By
+It *should* work with multiple entrypoint, however I haven't tried that. I got it to work for my project and called it good.
 
-This plugin is inspired by [vite-plugin-lib-inject-css](https://github.com/emosheeep/vite-plugin-lib-inject-css) but
-adapted specifically for tsdown's architecture and build process.
+**Contributions welcome!**
 
-## License
+### License
 
 MIT © bosh-code
+
+<div align="center">
+  <img style="width: 120px" src="https://raw.githubusercontent.com/bosh-code/tsdown-plugin-inject-css/main/.github/images/nz-made.png">
+</div>
