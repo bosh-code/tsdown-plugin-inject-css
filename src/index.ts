@@ -1,10 +1,20 @@
-import type { Plugin, OutputChunk, NormalizedOutputOptions, OutputBundle } from 'rolldown';
+import type { Plugin, OutputChunk, NormalizedOutputOptions, OutputBundle, OutputOptions } from 'rolldown';
 import type JavaScriptTypes from '@ast-grep/napi/lang/JavaScript';
 import type { Kinds } from '@ast-grep/napi/types/staticTypes';
-import { Lang, parse } from '@ast-grep/napi';
+import { Lang, parse, type SgNode } from '@ast-grep/napi';
+
+type CSSFiles = Set<string> | undefined;
+
+type NodePos = SgNode<JavaScriptTypes> | undefined;
 
 /**
- * Extract CSS imports from source code
+ * @name extractCssImports
+ * @description Extract CSS imports from source code
+ * @example
+ * const s = 'import "./index.css";'
+ * const arr = extractCssImports(s) // ["./index.css"]
+ * @param code - The source code to analyze
+ * @returns An array of CSS import paths
  */
 const extractCssImports = (code: string): string[] => {
   const cssImports: string[] = [];
@@ -23,8 +33,8 @@ const extractCssImports = (code: string): string[] => {
 };
 
 /**
- * Inject css at the top of each generated chunk file for tsdown library builds.
- * This plugin automatically imports CSS files that are referenced by each chunk.
+ * @description Inject CSS files at the top of each generated chunk file for tsdown builds.
+ * @return {Plugin} A Rolldown plugin to inject CSS imports into library chunks.
  */
 export const libInjectCss = (): Plugin => {
   // Track CSS imports per module
@@ -36,7 +46,8 @@ export const libInjectCss = (): Plugin => {
     name: 'tsdown:lib-inject-css',
 
     // Set default config for better library bundling
-    outputOptions(outputOptions) {
+    // Not sure if this is required
+    outputOptions(outputOptions: OutputOptions): OutputOptions {
       // Prevent hoisting transitive imports to avoid tree-shaking issues
       if (typeof outputOptions.hoistTransitiveImports !== 'boolean') {
         return {
@@ -44,12 +55,13 @@ export const libInjectCss = (): Plugin => {
           hoistTransitiveImports: false
         };
       }
+
       return outputOptions;
     },
 
-    // Capture CSS imports before they're stripped
+    // Capture CSS imports before they're stripped by the build
     transform(code, id) {
-      // Only process TypeScript/JavaScript files
+      // Only process TypeScript/JavaScript files (ignore .d.ts files)
       if (!/\.(tsx?|jsx?)$/.test(id)) {
         return null;
       }
@@ -57,7 +69,6 @@ export const libInjectCss = (): Plugin => {
       const cssImports = extractCssImports(code);
 
       if (cssImports.length > 0) {
-        console.log(`BOSH: Found ${cssImports.length} CSS imports in ${id}:`, cssImports);
         cssImportMap.set(id, cssImports);
       }
 
@@ -109,7 +120,7 @@ export const libInjectCss = (): Plugin => {
           continue;
         }
 
-        const cssFiles = chunkCssMap.get(outputChunk.fileName);
+        const cssFiles: CSSFiles = chunkCssMap.get(outputChunk.fileName);
 
         if (!cssFiles || cssFiles.size === 0) {
           continue;
@@ -118,7 +129,7 @@ export const libInjectCss = (): Plugin => {
         const excludeTokens: Kinds<JavaScriptTypes>[] = ['import_statement', 'expression_statement'];
 
         // Find the position to inject CSS imports
-        const node = parse<JavaScriptTypes>(Lang.JavaScript, outputChunk.code)
+        const node: NodePos = parse<JavaScriptTypes>(Lang.JavaScript, outputChunk.code)
           .root()
           .children()
           .find((node) => !excludeTokens.includes(node.kind()));
