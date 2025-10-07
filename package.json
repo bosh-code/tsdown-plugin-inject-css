@@ -21,6 +21,7 @@
     "@commitlint/prompt-cli": "^20.1.0",
     "@types/node": "^24.7.0",
     "eslint": "^9.37.0",
+    "npm-run-all2": "^8.0.4",
     "prettier": "^3.6.2",
     "rolldown": "^1.0.0-beta.42",
     "safe-publish-latest": "^2.0.0",
