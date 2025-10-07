@@ -2,20 +2,11 @@ import type { Plugin, OutputChunk, NormalizedOutputOptions, OutputBundle } from 
 import type JavaScriptTypes from '@ast-grep/napi/lang/JavaScript';
 import type { Kinds } from '@ast-grep/napi/types/staticTypes';
 import { Lang, parse } from '@ast-grep/napi';
-import MagicString from 'magic-string';
-
-export type LibInjectCssOptions = {
-  /**
-   * Whether to generate sourcemaps
-   * @default true
-   */
-  sourcemap?: boolean;
-}
 
 /**
  * Extract CSS imports from source code
  */
-const extractCssImports = (code: string, id: string): string[] => {
+const extractCssImports = (code: string): string[] => {
   const cssImports: string[] = [];
 
   // Match CSS import statements
@@ -35,9 +26,7 @@ const extractCssImports = (code: string, id: string): string[] => {
  * Inject css at the top of each generated chunk file for tsdown library builds.
  * This plugin automatically imports CSS files that are referenced by each chunk.
  */
-export const libInjectCss = (options: LibInjectCssOptions = {}): Plugin => {
-  const { sourcemap = true } = options;
-
+export const libInjectCss = (): Plugin => {
   // Track CSS imports per module
   const cssImportMap = new Map<string, string[]>();
   // Track which modules are included in which chunks
@@ -65,7 +54,7 @@ export const libInjectCss = (options: LibInjectCssOptions = {}): Plugin => {
         return null;
       }
 
-      const cssImports = extractCssImports(code, id);
+      const cssImports = extractCssImports(code);
 
       if (cssImports.length > 0) {
         console.log(`BOSH: Found ${cssImports.length} CSS imports in ${id}:`, cssImports);
@@ -112,7 +101,11 @@ export const libInjectCss = (options: LibInjectCssOptions = {}): Plugin => {
         const outputChunk = chunk as OutputChunk;
 
         // Skip non-JavaScript files (like .d.ts files)
-        if (!outputChunk.fileName.endsWith('.js') && !outputChunk.fileName.endsWith('.mjs') && !outputChunk.fileName.endsWith('.cjs')) {
+        if (
+          !outputChunk.fileName.endsWith('.js') &&
+          !outputChunk.fileName.endsWith('.mjs') &&
+          !outputChunk.fileName.endsWith('.cjs')
+        ) {
           continue;
         }
 
@@ -122,10 +115,7 @@ export const libInjectCss = (options: LibInjectCssOptions = {}): Plugin => {
           continue;
         }
 
-        const excludeTokens: Kinds<JavaScriptTypes>[] = [
-          'import_statement',
-          'expression_statement'
-        ];
+        const excludeTokens: Kinds<JavaScriptTypes>[] = ['import_statement', 'expression_statement'];
 
         // Find the position to inject CSS imports
         const node = parse<JavaScriptTypes>(Lang.JavaScript, outputChunk.code)
@@ -151,9 +141,7 @@ export const libInjectCss = (options: LibInjectCssOptions = {}): Plugin => {
             cssFilePath = `./${cssFilePath}`;
           }
 
-          const injection = options.format === 'es'
-            ? `import '${cssFilePath}';`
-            : `require('${cssFilePath}');`;
+          const injection = options.format === 'es' ? `import '${cssFilePath}';` : `require('${cssFilePath}');`;
 
           injections.push(injection);
         }
@@ -164,11 +152,6 @@ export const libInjectCss = (options: LibInjectCssOptions = {}): Plugin => {
 
         // Update code and sourcemap
         outputChunk.code = code;
-
-        if (sourcemap && options.sourcemap) {
-          const ms = new MagicString(code);
-          outputChunk.map = ms.generateMap({ hires: 'boundary' }) as any;
-        }
       }
     }
   };

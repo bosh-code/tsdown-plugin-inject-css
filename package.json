@@ -12,8 +12,7 @@
     }
   ],
   "dependencies": {
-    "@ast-grep/napi": "^0.39.6",
-    "magic-string": "^0.30.19"
+    "@ast-grep/napi": "^0.39.6"
   },
   "devDependencies": {
     "@bosh-code/eslint-plugin": "^1.1.0",

@@ -11,9 +11,6 @@ importers:
       '@ast-grep/napi':
         specifier: ^0.39.6
         version: 0.39.6
-      magic-string:
-        specifier: ^0.30.19
-        version: 0.30.19
     devDependencies:
       '@bosh-code/eslint-plugin':
         specifier: ^1.1.0
