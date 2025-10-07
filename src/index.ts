@@ -36,7 +36,7 @@ const extractCssImports = (code: string): string[] => {
  * @description Inject CSS files at the top of each generated chunk file for tsdown builds.
  * @return {Plugin} A Rolldown plugin to inject CSS imports into library chunks.
  */
-export const libInjectCss = (): Plugin => {
+export const injectCssPlugin = (): Plugin => {
   // Track CSS imports per module
   const cssImportMap = new Map<string, string[]>();
   // Track which modules are included in which chunks
@@ -85,6 +85,14 @@ export const libInjectCss = (): Plugin => {
     },
 
     generateBundle(options: NormalizedOutputOptions, bundle: OutputBundle) {
+      // Gather all CSS files that have been bundled
+      const outputCssFiles = new Set<string>();
+      for (const file of Object.keys(bundle)) {
+        if (file.endsWith('.css')) {
+          outputCssFiles.add(file);
+        }
+      }
+
       // Build a map of chunk -> CSS files
       const chunkCssMap = new Map<string, Set<string>>();
 
@@ -98,7 +106,13 @@ export const libInjectCss = (): Plugin => {
 
           const chunkCss = chunkCssMap.get(chunkName)!;
           for (const cssImport of cssImports) {
-            chunkCss.add(cssImport);
+            // Normalize CSS import path to match the output file name
+            const normalizedPath = cssImport.replace(/^\.\//, '');
+
+            // Only add CSS files have been bundled
+            if (outputCssFiles.has(normalizedPath)) {
+              chunkCss.add(normalizedPath);
+            }
           }
         }
       }
@@ -165,7 +179,118 @@ export const libInjectCss = (): Plugin => {
         outputChunk.code = code;
       }
     }
+
+    // generateBundle(options: NormalizedOutputOptions, bundle: OutputBundle) {
+    //   // First, get all CSS files that actually exist in the output bundle
+    //   const outputCssFiles = new Set<string>();
+    //   for (const file of Object.keys(bundle)) {
+    //     if (file.endsWith('.css')) {
+    //       outputCssFiles.add(file);
+    //     }
+    //   }
+    //
+    //   console.log('BOSH: CSS files in output bundle:', Array.from(outputCssFiles));
+    //
+    //   // Build a map of chunk -> CSS files
+    //   const chunkCssMap = new Map<string, Set<string>>();
+    //
+    //   for (const [moduleId, cssImports] of cssImportMap.entries()) {
+    //     const chunkName = moduleToChunkMap.get(moduleId);
+    //
+    //     if (chunkName) {
+    //       if (!chunkCssMap.has(chunkName)) {
+    //         chunkCssMap.set(chunkName, new Set());
+    //       }
+    //
+    //       const chunkCss = chunkCssMap.get(chunkName)!;
+    //       for (const cssImport of cssImports) {
+    //         // Normalize the CSS import path to match output file names
+    //         const normalizedPath = cssImport.replace(/^\.\//, '');
+    //
+    //         // Only add CSS files that actually exist in the output bundle
+    //         if (outputCssFiles.has(normalizedPath)) {
+    //           chunkCss.add(normalizedPath);
+    //           console.log(`BOSH: Adding CSS ${normalizedPath} to chunk ${chunkName}`);
+    //         } else {
+    //           console.log(
+    //             `BOSH: Skipping CSS ${normalizedPath} (not in output bundle, likely bundled into another CSS file)`
+    //           );
+    //         }
+    //       }
+    //     }
+    //   }
+    //
+    //   console.log('BOSH: Chunk CSS Map:', Array.from(chunkCssMap.entries()));
+    //
+    //   // Inject CSS imports into chunks
+    //   for (const chunk of Object.values(bundle)) {
+    //     if (chunk.type !== 'chunk') {
+    //       continue;
+    //     }
+    //
+    //     const outputChunk = chunk as OutputChunk;
+    //
+    //     // Skip non-JavaScript files (like .d.ts files)
+    //     if (
+    //       !outputChunk.fileName.endsWith('.js') &&
+    //       !outputChunk.fileName.endsWith('.mjs') &&
+    //       !outputChunk.fileName.endsWith('.cjs')
+    //     ) {
+    //       continue;
+    //     }
+    //
+    //     const cssFiles = chunkCssMap.get(outputChunk.fileName);
+    //
+    //     if (!cssFiles || cssFiles.size === 0) {
+    //       console.log(`BOSH: No CSS imports for ${outputChunk.fileName}`);
+    //       continue;
+    //     }
+    //
+    //     console.log(`BOSH: Injecting ${cssFiles.size} CSS imports into ${outputChunk.fileName}`);
+    //
+    //     // Find the position to inject CSS imports
+    //     const node = parse<JavaScriptTypes>(Lang.JavaScript, outputChunk.code)
+    //       .root()
+    //       .children()
+    //       .find((node) => !excludeTokens.includes(node.kind()));
+    //
+    //     const position = node?.range().start.index ?? 0;
+    //
+    //     // Inject CSS imports at the top of the chunk
+    //     let code = outputChunk.code;
+    //     const injections: string[] = [];
+    //
+    //     for (const cssFileName of cssFiles) {
+    //       // Resolve the CSS file path relative to the chunk
+    //       let cssFilePath = cssFileName;
+    //
+    //       // If it's a relative import, keep it relative
+    //       if (cssFilePath.startsWith('./') || cssFilePath.startsWith('../')) {
+    //         // Already relative, use as-is
+    //       } else {
+    //         // Make it relative
+    //         cssFilePath = `./${cssFilePath}`;
+    //       }
+    //
+    //       const injection = options.format === 'es' ? `import '${cssFilePath}';` : `require('${cssFilePath}');`;
+    //
+    //       injections.push(injection);
+    //     }
+    //
+    //     if (injections.length > 0) {
+    //       code = code.slice(0, position) + injections.join('\n') + '\n' + code.slice(position);
+    //     }
+    //
+    //     // Update code and sourcemap
+    //     outputChunk.code = code;
+    //
+    //     if (sourcemap && options.sourcemap) {
+    //       const ms = new MagicString(code);
+    //       outputChunk.map = ms.generateMap({ hires: 'boundary' }) as any;
+    //     }
+    //
+    //     console.log(`BOSH: Successfully injected CSS into ${outputChunk.fileName}`);
+    //   }
+    // }
   };
 };
-
-export default libInjectCss;
