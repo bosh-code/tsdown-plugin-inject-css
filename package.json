@@ -1,7 +1,7 @@
 {
   "name": "@bosh-code/tsdown-plugin-inject-css",
   "description": "Import your bundled .css files into libraries built with tsdown",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "author": "Ryan Bosher <ryan@bosher.co.nz>",
   "bugs": "https://github.com/bosh-code/tsdown-plugin-inject-css/issues",
   "contributors": [
