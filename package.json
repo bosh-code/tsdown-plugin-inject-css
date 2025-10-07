@@ -1,7 +1,7 @@
 {
   "name": "@bosh-code/tsdown-plugin-inject-css",
   "description": "Inject CSS imports at the top of each chunk file in tsdown library builds",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "author": "Ryan Bosher <ryan@bosher.co.nz>",
   "bugs": "https://github.com/bosh-code/tsdown-plugin-inject-css/issues",
   "contributors": [
